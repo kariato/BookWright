@@ -1,0 +1,2 @@
+[console_scripts]
+bookwright = bookwright.ui.app:main

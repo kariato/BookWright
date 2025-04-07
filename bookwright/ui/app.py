@@ -54,6 +54,8 @@
 
 import gradio as gr
 import os, signal
+from bookwright.ui.scenes_manager import ScenesManager
+from bookwright.ui.characters_manager import CharactersManager
 
 def welcome_area():
     return """
@@ -72,8 +74,10 @@ Enjoy creative writing powered by AI and structured workflow!
 """
 
 def characters_interface():
-    # Placeholder for character management UI
-    return gr.Markdown("### Manage Characters\n_Add, edit, and view character bios here._")
+    characters_manager = CharactersManager()
+    scenes_manager = ScenesManager()
+    characters_manager.set_scenes(scenes_manager.scenes)
+    return characters_manager.create_characters_interface()
 
 def chapters_interface():
     return gr.Markdown("### Manage Chapters\n_Create outlines, add scene details, and more._")
@@ -87,6 +91,9 @@ def database_viewer_interface():
 def settings_interface():
     return gr.Markdown("### Settings\n_Configure model options, preferences, and more._")
 
+def scenes_interface():
+    scenes_manager = ScenesManager()
+    return scenes_manager.create_scene_interface()
 
 # --- Example functions to connect your data backend ---
 def save_book_meta(title, author, genre, setting, description, plot_summary, plot_points_text):
@@ -161,7 +168,9 @@ with gr.Blocks(title="BookWright AI") as demo:
         with gr.TabItem("Home"):
             gr.Markdown("Welcome to BookWright AI!")
         with gr.TabItem("Characters"):
-            gr.Markdown("Manage Characters here...")
+            characters_interface()
+        with gr.TabItem("Scenes"):
+            scenes_interface()
         with gr.TabItem("Chapters"):
             gr.Markdown("Manage Chapters here...")
         with gr.TabItem("Story Generator"):
@@ -177,6 +186,9 @@ with gr.Blocks(title="BookWright AI") as demo:
         # Add your new tab:
         book_info_tab()  # call the function defined above to insert tab
 
-if __name__ == "__main__":
+def main():
     demo.launch()
+
+if __name__ == "__main__":
+    main()
 
