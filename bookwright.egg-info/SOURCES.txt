@@ -17,6 +17,7 @@ bookwright/models/chapter.py
 bookwright/models/character.py
 bookwright/ui/__init__.py
 bookwright/ui/app.py
+bookwright/ui/chapters_manager.py
 bookwright/ui/characters_manager.py
 bookwright/ui/scenes_manager.py
 bookwright/utils/__init__.py

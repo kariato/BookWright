@@ -1,14 +1,16 @@
 import gradio as gr
 from typing import List, Dict, Optional
+from bookwright.core.llm_interface import OllamaClient
 
 class CharactersManager:
-    def __init__(self):
+    def __init__(self, scenes_manager):
         self.characters: List[Dict] = []
-        self.scenes: List[Dict] = []  # This will be populated from ScenesManager
+        self.scenes_manager = scenes_manager
+        self.llm = OllamaClient(model='deepseek')
         
     def set_scenes(self, scenes: List[Dict]):
         """Set the scenes list from ScenesManager"""
-        self.scenes = scenes
+        self.scenes_manager.scenes = scenes
         
     def create_characters_interface(self) -> gr.Blocks:
         """Create and return the Gradio interface for characters management"""
@@ -139,7 +141,7 @@ class CharactersManager:
             return []
             
         character_scenes = []
-        for scene in self.scenes:
+        for scene in self.scenes_manager.scenes:
             if character_name in scene.get("characters", []):
                 character_scenes.append([
                     scene["title"],
@@ -162,7 +164,7 @@ class CharactersManager:
             scene_notes = scene_data[5]
             
             # Find the scene and update character details
-            for scene in self.scenes:
+            for scene in self.scenes_manager.scenes:
                 if scene["title"] == scene_title:
                     if "character_roles" not in scene:
                         scene["character_roles"] = {}
@@ -190,7 +192,7 @@ class CharactersManager:
             "character_notes": {character_name: ""}
         }
         
-        self.scenes.append(new_scene)
+        self.scenes_manager.scenes.append(new_scene)
         return f"Added {character_name} to new scene", self.get_character_scenes(character_name)
     
     def save_character(self, name: str, role: str, appearance: str, age: int, gender: str,
@@ -261,7 +263,7 @@ class CharactersManager:
         self.characters = [c for c in self.characters if c["name"] != selected_name]
         
         # Remove character from all scenes
-        for scene in self.scenes:
+        for scene in self.scenes_manager.scenes:
             if selected_name in scene.get("characters", []):
                 scene["characters"].remove(selected_name)
                 if "character_roles" in scene:

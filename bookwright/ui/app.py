@@ -56,6 +56,7 @@ import gradio as gr
 import os, signal
 from bookwright.ui.scenes_manager import ScenesManager
 from bookwright.ui.characters_manager import CharactersManager
+from bookwright.ui.chapters_manager import ChaptersManager
 
 def welcome_area():
     return """
@@ -123,71 +124,91 @@ def load_book_meta():
 
 # &#x2014; Define UI &#x2014;
 def book_info_tab():
+    """Create the Book Info tab interface"""
     with gr.TabItem("Book Info"):
-        gr.Markdown("### Book Details, Plot, and Story Settings Editor")
-        title = gr.Textbox(label="Book Title")
-        author = gr.Textbox(label="Author")
-        genre = gr.Dropdown(choices=["Fantasy", "Sci-Fi", "Romance", "Mystery", "Horror", "Non-fiction", "Other"], label="Genre")
-        setting = gr.Textbox(label="Main Setting/World")
-        description = gr.Textbox(label="Book Summary / Description")
-        plot_summary = gr.Textbox(label="High-Level Plot Summary")
-        plot_points = gr.TextArea(label="Main Plot Points (one per line)", lines=8, placeholder="Eg:\nHero discovers prophecy\nRebels betrayed\n...")
-
+        gr.Markdown("### Book Information")
+        book_title = gr.Textbox(label="Book Title")
+        book_author = gr.Textbox(label="Author")
+        book_genre = gr.Dropdown(
+            choices=["Fiction", "Non-Fiction", "Mystery", "Romance", "Science Fiction", "Fantasy", "Other"],
+            label="Genre"
+        )
+        book_summary = gr.TextArea(label="Book Summary", lines=5)
+        book_notes = gr.TextArea(label="Additional Notes", lines=4)
+        
         with gr.Row():
-            save_button = gr.Button("Save Details")
-            load_button = gr.Button("Load Last Saved")
-            clear_button = gr.Button("Clear Form")
-
-        status = gr.Markdown("Status: _Nothing saved yet_")
+            save_book_info = gr.Button("Save Book Info")
+            clear_book_info = gr.Button("Clear Form")
+        
+        book_status = gr.Markdown("Status: _No book info saved yet_")
 
         # When clicking save
-        save_button.click(
-            fn=save_book_meta,
-            inputs=[title, author, genre, setting, description, plot_summary, plot_points],
-            outputs=status
+        def save_info(title, author, genre, summary, notes):
+            # Here you would save to your database
+            return f"Saved book info: {title} by {author}"
+        
+        save_book_info.click(
+            fn=save_info,
+            inputs=[book_title, book_author, book_genre, book_summary, book_notes],
+            outputs=book_status
         )
-        # When clicking load/view
-        load_button.click(
-            fn=load_book_meta,
-            inputs=[],
-            outputs=[title, author, genre, setting, description, plot_summary, plot_points]
-        )
+        
         # Clear/reset
         def clear_all():
-            return "", "", "", "", "", "", ""
-        clear_button.click(fn=clear_all, inputs=[], outputs=[title, author, genre, setting, description, plot_summary, plot_points])
-
+            return "", "", "", "", ""
+        
+        clear_book_info.click(
+            fn=clear_all,
+            inputs=[],
+            outputs=[book_title, book_author, book_genre, book_summary, book_notes]
+        )
 
 def quit_app():
+    """Function to quit the application"""
     os.kill(os.getpid(), signal.SIGINT)
     return "🚪 Exiting BookWright AI..."
-# --- integrate this tab into your main Blocks app ---
-with gr.Blocks(title="BookWright AI") as demo:
-    gr.Markdown("# 📚 BookWright AI - Writing Assistant")
-    with gr.Tabs():
-        with gr.TabItem("Home"):
-            gr.Markdown("Welcome to BookWright AI!")
-        with gr.TabItem("Characters"):
-            characters_interface()
-        with gr.TabItem("Scenes"):
-            scenes_interface()
-        with gr.TabItem("Chapters"):
-            gr.Markdown("Manage Chapters here...")
-        with gr.TabItem("Story Generator"):
-            gr.Markdown("Generate stories here...")
-        with gr.TabItem("Database Viewer"):
-            gr.Markdown("View database here...")
 
-        with gr.TabItem("Settings"):
-            gr.Markdown("Configure your settings here.")
-            quit_button = gr.Button("❌ Quit Application")
-            status = gr.Markdown("")
-            quit_button.click(fn=quit_app, inputs=[], outputs=status)
-        # Add your new tab:
-        book_info_tab()  # call the function defined above to insert tab
+def create_interface():
+    scenes_manager = ScenesManager()
+    characters_manager = CharactersManager(scenes_manager)
+    chapters_manager = ChaptersManager(scenes_manager)
+    
+    with gr.Blocks(title="BookWright AI") as interface:
+        gr.Markdown("# 📚 BookWright AI - Writing Assistant")
+        
+        with gr.Tabs():
+            with gr.TabItem("Home"):
+                gr.Markdown("Welcome to BookWright AI!")
+            
+            with gr.TabItem("Characters"):
+                characters_manager.create_characters_interface()
+            
+            with gr.TabItem("Scenes"):
+                scenes_manager.create_scene_interface()
+            
+            with gr.TabItem("Chapters"):
+                chapters_manager.create_chapters_interface()
+            
+            with gr.TabItem("Story Generator"):
+                gr.Markdown("Generate stories here...")
+            
+            with gr.TabItem("Database Viewer"):
+                gr.Markdown("View database here...")
+            
+            with gr.TabItem("Settings"):
+                gr.Markdown("Configure your settings here.")
+                quit_button = gr.Button("❌ Quit Application")
+                status = gr.Markdown("")
+                quit_button.click(fn=quit_app, inputs=[], outputs=status)
+            
+            # Add the Book Info tab
+            book_info_tab()
+    
+    return interface
 
 def main():
-    demo.launch()
+    interface = create_interface()
+    interface.launch()
 
 if __name__ == "__main__":
     main()

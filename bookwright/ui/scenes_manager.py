@@ -1,9 +1,12 @@
 import gradio as gr
 from typing import List, Dict, Optional
+from bookwright.core.llm_interface import OllamaClient
 
 class ScenesManager:
     def __init__(self):
         self.scenes: List[Dict] = []
+        self.llm = OllamaClient(model='deepseek')
+        self.chat_history = []
         
     def create_scene_interface(self) -> gr.Blocks:
         """Create and return the Gradio interface for scenes management"""
@@ -36,6 +39,51 @@ class ScenesManager:
                 
                 load_button = gr.Button("Load Selected Scene")
                 delete_button = gr.Button("Delete Selected Scene")
+            
+            # Chat Interface
+            with gr.Group():
+                gr.Markdown("### Character Development Chat")
+                chatbot = gr.Chatbot(height=300)
+                msg = gr.Textbox(label="Ask about characters or scenes", placeholder="Type your message here...")
+                clear_chat = gr.Button("Clear Chat")
+                
+                def respond(message, chat_history):
+                    if not message:
+                        return "", chat_history
+                        
+                    # Build context from current scene and characters
+                    context = ""
+                    if scene_title.value:
+                        context += f"Current Scene: {scene_title.value}\n"
+                        context += f"Description: {scene_description.value}\n"
+                        context += f"Location: {scene_location.value}\n"
+                        context += f"Day: {scene_day.value}\n"
+                        context += f"Time: {scene_time.value}\n"
+                        context += f"Characters: {scene_characters.value}\n"
+                        context += f"Notes: {scene_notes.value}\n\n"
+                    
+                    # Add all scenes as context
+                    if self.scenes:
+                        context += "All Scenes:\n"
+                        for scene in self.scenes:
+                            context += f"- {scene['title']}: {scene['description']}\n"
+                    
+                    # Build prompt with context
+                    prompt = f"""You are a helpful writing assistant. Use the following context to help answer questions about characters and scenes:
+
+{context}
+
+User: {message}
+Assistant: """
+                    
+                    # Get response from Ollama
+                    response = self.llm.generate(prompt)
+                    
+                    chat_history.append((message, response))
+                    return "", chat_history
+                
+                msg.submit(respond, [msg, chatbot], [msg, chatbot])
+                clear_chat.click(lambda: [], None, chatbot)
             
             # Connect buttons to functions
             save_button.click(
