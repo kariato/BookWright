@@ -1,12 +1,14 @@
 import gradio as gr
 from typing import List, Dict, Optional
 from bookwright.core.llm_interface import OllamaClient
+from bookwright.utils.database_manager import DatabaseManager
 
 class CharactersManager:
     def __init__(self, scenes_manager):
         self.characters: List[Dict] = []
         self.scenes_manager = scenes_manager
         self.llm = OllamaClient(model='deepseek')
+        self.db = DatabaseManager(None, None, None).db  # Temporary until we can pass the manager
         
     def set_scenes(self, scenes: List[Dict]):
         """Set the scenes list from ScenesManager"""
@@ -195,44 +197,38 @@ class CharactersManager:
         self.scenes_manager.scenes.append(new_scene)
         return f"Added {character_name} to new scene", self.get_character_scenes(character_name)
     
-    def save_character(self, name: str, role: str, appearance: str, age: int, gender: str,
-                      personality: str, background: str, motivation: str,
-                      relationships: str, skills: str, notes: str) -> tuple:
-        """Save a new character or update an existing one"""
+    def save_character(self, name: str, role: str, physical_description: str, personality_traits: str,
+                      background: str, motivation: str, relationships: str, skills: str, notes: str) -> str:
+        """Save a character to the database"""
         character = {
             "name": name,
             "role": role,
-            "appearance": appearance,
-            "age": age,
-            "gender": gender,
-            "personality": personality,
+            "physical_description": physical_description,
+            "personality_traits": personality_traits,
             "background": background,
             "motivation": motivation,
             "relationships": relationships,
             "skills": skills,
             "notes": notes
         }
-        
-        # Check if character with this name already exists
-        existing_index = next((i for i, c in enumerate(self.characters) if c["name"] == name), None)
-        
-        if existing_index is not None:
-            self.characters[existing_index] = character
-            status = f"Updated character: {name}"
-        else:
-            self.characters.append(character)
-            status = f"Saved new character: {name}"
-            
-        return status, self.get_characters_list(), self.get_character_scenes(name)
+        self.db.save_character(character)
+        self.characters = self.db.get_characters()  # Refresh the characters list
+        return f"Saved character: {name}"
+    
+    def delete_character(self, name: str) -> str:
+        """Delete a character from the database"""
+        self.db.delete_character(name)
+        self.characters = self.db.get_characters()  # Refresh the characters list
+        return f"Deleted character: {name}"
     
     def get_characters_list(self) -> List[List]:
         """Return a list of characters in the format expected by the Dataframe"""
-        return [[c["name"], c["role"], c["age"], c["gender"]] for c in self.characters]
+        return [[c["name"], c["role"]] for c in self.characters]
     
     def load_character(self, selected_characters: List[List]) -> tuple:
         """Load a character's details into the form"""
         if not selected_characters:
-            return "", "", "", 0, "", "", "", "", "", "", "", []
+            return "", "", "", "", "", "", "", "", ""
             
         selected_name = selected_characters[0][0]  # First column is name
         character = next((c for c in self.characters if c["name"] == selected_name), None)
@@ -241,38 +237,16 @@ class CharactersManager:
             return (
                 character["name"],
                 character["role"],
-                character["appearance"],
-                character["age"],
-                character["gender"],
-                character["personality"],
+                character["physical_description"],
+                character["personality_traits"],
                 character["background"],
                 character["motivation"],
                 character["relationships"],
                 character["skills"],
-                character["notes"],
-                self.get_character_scenes(selected_name)
+                character["notes"]
             )
-        return "", "", "", 0, "", "", "", "", "", "", "", []
-    
-    def delete_character(self, selected_characters: List[List]) -> tuple:
-        """Delete the selected character"""
-        if not selected_characters:
-            return "No character selected", self.get_characters_list(), []
-            
-        selected_name = selected_characters[0][0]
-        self.characters = [c for c in self.characters if c["name"] != selected_name]
-        
-        # Remove character from all scenes
-        for scene in self.scenes_manager.scenes:
-            if selected_name in scene.get("characters", []):
-                scene["characters"].remove(selected_name)
-                if "character_roles" in scene:
-                    scene["character_roles"].pop(selected_name, None)
-                if "character_notes" in scene:
-                    scene["character_notes"].pop(selected_name, None)
-        
-        return f"Deleted character: {selected_name}", self.get_characters_list(), []
+        return "", "", "", "", "", "", "", "", ""
     
     def clear_form(self) -> tuple:
         """Clear all form fields"""
-        return "", "", "", 0, "", "", "", "", "", "", "", [] 
+        return "", "", "", "", "", "", "", "", "" 

@@ -6,3 +6,7 @@ charset-normalizer>=3.3.2
 idna>=3.6
 typing_extensions>=4.11.0
 urllib3>=2.2.1
+sqlalchemy>=2.0.0
+langgraph>=0.0.15
+ollama>=0.1.6
+pydantic>=2.6.1

@@ -57,6 +57,8 @@ import os, signal
 from bookwright.ui.scenes_manager import ScenesManager
 from bookwright.ui.characters_manager import CharactersManager
 from bookwright.ui.chapters_manager import ChaptersManager
+from bookwright.utils.database_manager import DatabaseManager
+from datetime import datetime
 
 def welcome_area():
     return """
@@ -139,18 +141,38 @@ def book_info_tab():
         with gr.Row():
             save_book_info = gr.Button("Save Book Info")
             clear_book_info = gr.Button("Clear Form")
+            load_book_info = gr.Button("Load Saved Info")
         
         book_status = gr.Markdown("Status: _No book info saved yet_")
 
         # When clicking save
         def save_info(title, author, genre, summary, notes):
-            # Here you would save to your database
+            database_manager.db.save_book_info(title, author, genre, summary, notes)
             return f"Saved book info: {title} by {author}"
         
         save_book_info.click(
             fn=save_info,
             inputs=[book_title, book_author, book_genre, book_summary, book_notes],
             outputs=book_status
+        )
+        
+        # When clicking load
+        def load_info():
+            book_info = database_manager.db.get_book_info()
+            if book_info:
+                return (
+                    book_info["title"],
+                    book_info["author"],
+                    book_info["genre"],
+                    book_info["summary"],
+                    book_info["notes"]
+                )
+            return "", "", "", "", ""
+        
+        load_book_info.click(
+            fn=load_info,
+            inputs=[],
+            outputs=[book_title, book_author, book_genre, book_summary, book_notes]
         )
         
         # Clear/reset
@@ -169,9 +191,16 @@ def quit_app():
     return "🚪 Exiting BookWright AI..."
 
 def create_interface():
+    global database_manager
     scenes_manager = ScenesManager()
     characters_manager = CharactersManager(scenes_manager)
     chapters_manager = ChaptersManager(scenes_manager)
+    database_manager = DatabaseManager(scenes_manager, characters_manager, chapters_manager)
+    
+    # Load initial data from database
+    scenes_manager.scenes = database_manager.db.get_scenes()
+    characters_manager.characters = database_manager.db.get_characters()
+    chapters_manager.chapters = database_manager.db.get_chapters()
     
     with gr.Blocks(title="BookWright AI") as interface:
         gr.Markdown("# 📚 BookWright AI - Writing Assistant")
@@ -193,7 +222,46 @@ def create_interface():
                 gr.Markdown("Generate stories here...")
             
             with gr.TabItem("Database Viewer"):
-                gr.Markdown("View database here...")
+                gr.Markdown("### Database Operations")
+                
+                # Export Section
+                gr.Markdown("#### Export Data")
+                export_status = gr.Markdown("Click the button below to export all data as JSON")
+                export_button = gr.Button("Export Data")
+                json_output = gr.TextArea(label="JSON Data", lines=10, interactive=False)
+                
+                def export_data():
+                    json_data = database_manager.export_to_json()
+                    return "Data exported successfully!", json_data
+                
+                export_button.click(
+                    fn=export_data,
+                    inputs=[],
+                    outputs=[export_status, json_output]
+                )
+                
+                # Download Section
+                gr.Markdown("#### Download Data")
+                download_button = gr.Button("Download JSON File")
+                download_status = gr.Markdown("")
+                download_file = gr.File(label="Download File")
+                
+                def download_data():
+                    json_data = database_manager.export_to_json()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"bookwright_export_{timestamp}.json"
+                    
+                    # Create a temporary file
+                    with open(filename, "w") as f:
+                        f.write(json_data)
+                    
+                    return f"File saved as {filename}", filename
+                
+                download_button.click(
+                    fn=download_data,
+                    inputs=[],
+                    outputs=[download_status, download_file]
+                )
             
             with gr.TabItem("Settings"):
                 gr.Markdown("Configure your settings here.")

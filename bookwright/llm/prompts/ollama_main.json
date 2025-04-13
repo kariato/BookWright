@@ -1,0 +1,13 @@
+{
+    "llm_name": "ollama",
+    "system_card": "You are a helpful writing assistant specialized in structuring and editing stories. Always follow the user's style and be consistent with established story details. Your responses should be in valid JSON format.",
+    "prompt_card": "Please analyze the provided story data and generate a response based on the following context:\n\nStory Data:\n{app_data}\n\nUser Request:\n{user_input}\n\nPlease provide your response in the following JSON format:\n{\n  \"analysis\": {\n    \"summary\": \"Brief summary of your analysis\",\n    \"suggestions\": [\"List of specific suggestions\"],\n    \"improvements\": [\"List of potential improvements\"]\n  },\n  \"updated_content\": {\n    \"type\": \"character|scene|chapter\",\n    \"id\": \"identifier\",\n    \"changes\": {\n      \"field_name\": \"new_value\"\n    }\n  }\n}",
+    "chain_of_thought_prompts": [
+        "Step 1: Analyze the user's request and identify the key requirements",
+        "Step 2: Review the provided story data to understand the current context",
+        "Step 3: Identify areas for improvement or suggestions based on the data",
+        "Step 4: Generate specific recommendations while maintaining consistency",
+        "Step 5: Format the response as structured JSON"
+    ],
+    "handler_code": "function handleData(data) {\n  // Format the application data for the prompt\n  return JSON.stringify(data, null, 2);\n}"
+} 

@@ -1,12 +1,14 @@
 import gradio as gr
 from typing import List, Dict, Optional
 from bookwright.core.llm_interface import OllamaClient
+from bookwright.utils.database_manager import DatabaseManager
 
 class ChaptersManager:
     def __init__(self, scenes_manager):
         self.chapters: List[Dict] = []
         self.scenes_manager = scenes_manager
         self.llm = OllamaClient(model='deepseek')
+        self.db = DatabaseManager(None, None, None).db  # Temporary until we can pass the manager
         
     def create_chapters_interface(self) -> gr.Blocks:
         """Create and return the Gradio interface for chapters management"""
@@ -159,28 +161,17 @@ Assistant: """
         """Get list of all available scenes"""
         return [scene["title"] for scene in self.scenes_manager.scenes]
     
-    def save_chapter(self, title: str, description: str, notes: str) -> tuple:
-        """Save a new chapter or update an existing one"""
+    def save_chapter(self, title: str, description: str, notes: str) -> str:
+        """Save a chapter to the database"""
         chapter = {
             "title": title,
             "description": description,
             "notes": notes,
-            "scenes": []
+            "scenes": []  # Scenes will be added separately
         }
-        
-        # Check if chapter with this title already exists
-        existing_index = next((i for i, c in enumerate(self.chapters) if c["title"] == title), None)
-        
-        if existing_index is not None:
-            # Preserve existing scenes when updating
-            chapter["scenes"] = self.chapters[existing_index]["scenes"]
-            self.chapters[existing_index] = chapter
-            status = f"Updated chapter: {title}"
-        else:
-            self.chapters.append(chapter)
-            status = f"Saved new chapter: {title}"
-            
-        return status, self.get_chapters_list()
+        self.db.save_chapter(chapter)
+        self.chapters = self.db.get_chapters()  # Refresh the chapters list
+        return f"Saved chapter: {title}"
     
     def get_chapters_list(self) -> List[List]:
         """Return a list of chapters in the format expected by the Dataframe"""
@@ -210,15 +201,11 @@ Assistant: """
             )
         return "", "", "", []
     
-    def delete_chapter(self, selected_chapters: List[List]) -> tuple:
-        """Delete the selected chapter"""
-        if not selected_chapters:
-            return "No chapter selected", self.get_chapters_list(), []
-            
-        selected_title = selected_chapters[0][0]
-        self.chapters = [c for c in self.chapters if c["title"] != selected_title]
-        
-        return f"Deleted chapter: {selected_title}", self.get_chapters_list(), []
+    def delete_chapter(self, title: str) -> str:
+        """Delete a chapter from the database"""
+        self.db.delete_chapter(title)
+        self.chapters = self.db.get_chapters()  # Refresh the chapters list
+        return f"Deleted chapter: {title}"
     
     def assign_scenes(self, chapter_title: str, scene_titles: List[str]) -> tuple:
         """Assign scenes to a chapter"""
@@ -285,4 +272,4 @@ Assistant: """
     
     def clear_form(self) -> tuple:
         """Clear all form fields"""
-        return "", "", "" 
+        return "", "", "", [] 

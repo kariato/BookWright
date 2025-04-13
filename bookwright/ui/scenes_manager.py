@@ -1,11 +1,13 @@
 import gradio as gr
 from typing import List, Dict, Optional
 from bookwright.core.llm_interface import OllamaClient
+from bookwright.utils.database_manager import DatabaseManager
 
 class ScenesManager:
     def __init__(self):
         self.scenes: List[Dict] = []
         self.llm = OllamaClient(model='deepseek')
+        self.db = DatabaseManager(None, None, None).db  # Temporary until we can pass the manager
         self.chat_history = []
         
     def create_scene_interface(self) -> gr.Blocks:
@@ -115,38 +117,29 @@ Assistant: """
             
         return scenes_interface
     
-    def save_scene(self, title: str, description: str, location: str, day: str, time: str, characters: str, notes: str) -> tuple:
-        """Save a new scene or update an existing one"""
+    def save_scene(self, title: str, description: str, location: str, day: str, time: str, characters: List[str], notes: str) -> str:
+        """Save a scene to the database"""
         scene = {
             "title": title,
             "description": description,
             "location": location,
             "day": day,
             "time": time,
-            "characters": [c.strip() for c in characters.split(",") if c.strip()],
+            "characters": characters,
             "notes": notes
         }
-        
-        # Check if scene with this title already exists
-        existing_index = next((i for i, s in enumerate(self.scenes) if s["title"] == title), None)
-        
-        if existing_index is not None:
-            self.scenes[existing_index] = scene
-            status = f"Updated scene: {title}"
-        else:
-            self.scenes.append(scene)
-            status = f"Saved new scene: {title}"
-            
-        return status, self.get_scenes_list()
+        self.db.save_scene(scene)
+        self.scenes = self.db.get_scenes()  # Refresh the scenes list
+        return f"Saved scene: {title}"
     
-    def get_scenes_list(self) -> List[List[str]]:
+    def get_scenes_list(self) -> List[List]:
         """Return a list of scenes in the format expected by the Dataframe"""
         return [[s["title"], s["location"], s["day"], s["time"]] for s in self.scenes]
     
-    def load_scene(self, selected_scenes: List[List[str]]) -> tuple:
+    def load_scene(self, selected_scenes: List[List]) -> tuple:
         """Load a scene's details into the form"""
         if not selected_scenes:
-            return "", "", "", "", "", "", ""
+            return "", "", "", "", "", [], ""
             
         selected_title = selected_scenes[0][0]  # First column is title
         scene = next((s for s in self.scenes if s["title"] == selected_title), None)
@@ -158,21 +151,22 @@ Assistant: """
                 scene["location"],
                 scene["day"],
                 scene["time"],
-                ", ".join(scene["characters"]),
+                scene["characters"],
                 scene["notes"]
             )
-        return "", "", "", "", "", "", ""
+        return "", "", "", "", "", [], ""
     
-    def delete_scene(self, selected_scenes: List[List[str]]) -> tuple:
+    def delete_scene(self, selected_scenes: List[List]) -> tuple:
         """Delete the selected scene"""
         if not selected_scenes:
             return "No scene selected", self.get_scenes_list()
             
         selected_title = selected_scenes[0][0]
-        self.scenes = [s for s in self.scenes if s["title"] != selected_title]
+        self.db.delete_scene(selected_title)
+        self.scenes = self.db.get_scenes()  # Refresh the scenes list
         
         return f"Deleted scene: {selected_title}", self.get_scenes_list()
     
     def clear_form(self) -> tuple:
         """Clear all form fields"""
-        return "", "", "", "", "", "", "" 
+        return "", "", "", "", "", [], "" 

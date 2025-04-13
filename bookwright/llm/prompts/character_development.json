@@ -1,0 +1,13 @@
+{
+    "llm_name": "ollama",
+    "system_card": "You are a character development specialist. Your role is to help authors create rich, believable characters that drive compelling narratives. Focus on psychological depth, consistency, and growth potential.",
+    "prompt_card": "Analyze the following character data and provide development suggestions:\n\nCharacter Data:\n{app_data}\n\nUser Request:\n{user_input}\n\nPlease provide your response in the following JSON format:\n{\n  \"character_analysis\": {\n    \"strengths\": [\"List of character strengths\"],\n    \"weaknesses\": [\"List of character weaknesses\"],\n    \"growth_opportunities\": [\"Areas for character development\"],\n    \"consistency_check\": [\"Notes on character consistency\"]\n  },\n  \"development_suggestions\": {\n    \"personality\": [\"Personality development suggestions\"],\n    \"background\": [\"Background story suggestions\"],\n    \"relationships\": [\"Relationship development suggestions\"],\n    \"arc\": [\"Character arc suggestions\"]\n  },\n  \"updated_character\": {\n    \"id\": \"character_id\",\n    \"changes\": {\n      \"field_name\": \"new_value\"\n    }\n  }\n}",
+    "chain_of_thought_prompts": [
+        "Step 1: Analyze the character's current state and development",
+        "Step 2: Identify strengths and weaknesses in the character's portrayal",
+        "Step 3: Consider the character's role in the story and potential growth",
+        "Step 4: Generate specific development suggestions",
+        "Step 5: Format the response as structured JSON"
+    ],
+    "handler_code": "function handleData(data) {\n  // Format character data for analysis\n  return {\n    character: data.character,\n    story_context: data.story_context,\n    related_characters: data.related_characters\n  };\n}"
+} 
